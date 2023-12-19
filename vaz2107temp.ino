@@ -1,27 +1,31 @@
 #include <math.h>
-// number of items in an array
+// number of items in an array, lenght of array in arduino
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
-// for (byte i = 0; i < NUMITEMS (profName); i++)   profName - massiv
+// temperature table from datasheet for Epcos B57861-S 103-F40, 10 кОм, 1%, NTC thermistor
 float RtableMassiv[] = {963000,670100,471700,336500,242600,177000,130400,97070,72930,55330,42320,32650,25390,19900,15710,12490,10000,8057,6531,5327,4369,3603,2986,2488,2083,1752,1481,1258,1072,917.7,788.5,680,588.6,511.2,445.4,389.3,341.7,300.9,265.4,234.8,208.3,185.3,165.3};
 float TempTableMassiv[] = {-55,-50,-45,-40,-35,-30,-25,-20,-15,-10,-5,0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155};
-float u = 0;
+//voltage Vout on resistive voltage divider  
+float u = 0;  
 float Rtemp = 0;
 float temp = 0;
 
+// statistics for operations
 struct Params {
  float TempMassiv[10] = {0,0,0,0,0,0,0,0,0,0}; 
  int Relay = 0; 
-  };
+ };
   
 Params MyParams;
 Params* MyParamsPointer = &MyParams;
 
+// use 2 pins on my arduino nano v3
+int RelayControl = 4; //4 pin = D4 relay control, engine cooling fan on/off
+int OutDividerVoltage = 15; //15 pin = A1 reading voltage
+
 void setup() {
   // put your setup code here, to run once:
-Serial.begin(19200);
-pinMode(4, OUTPUT);
-// 15 pin = A1 reading voltage
-// 4 pin = D4 relay control
+Serial.begin(19200); //serial port for debugging
+pinMode(RelayControl, OUTPUT);
 }
 
 void loop() {
@@ -39,18 +43,18 @@ void loop() {
     Serial.print("Relay state: ");
     Serial.println((*MyParamsPointer).Relay);
     AvgTempCooler10 = AvgTempCooler10 / 10;
-    if ( (*MyParamsPointer).Relay == 1 || AvgTempCooler10 > 87 ) 
+    if ( (*MyParamsPointer).Relay == 1 || AvgTempCooler10 > 87 ) // engine cooling fan on
     {
-      digitalWrite(4, 1);
+      digitalWrite(RelayControl, 1);
       MyParamsPointer -> Relay = 1;
     } 
       else 
     {
-      digitalWrite(4, 0);
+      digitalWrite(RelayControl, 0);
     }
-    if ( (*MyParamsPointer).Relay == 1 && AvgTempCooler10 < 81 )
+    if ( (*MyParamsPointer).Relay == 1 && AvgTempCooler10 < 81 ) //engine cooling fan off
     {
-      digitalWrite(4, 0);
+      digitalWrite(RelayControl, 0);
       MyParamsPointer -> Relay = 0;
     }
     int massivpoint = 0;
@@ -58,7 +62,7 @@ void loop() {
     
         for (int i = 0; i<100; i++)
         {
-          massivsrednee = massivsrednee + analogRead( 15 );
+          massivsrednee = massivsrednee + analogRead( OutDividerVoltage ); //15 pin = A1 reading voltage
           delay(5);
         }
         float u = ((massivsrednee/100) * 5.0) / 1023;
